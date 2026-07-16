@@ -1,5 +1,22 @@
 #include <windows.h>
-#include <cstdint>
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+
+static int hex_val(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    return 0;
+}
+
+static unsigned long hex_to_ul(const char* s) {
+    unsigned long v = 0;
+    while (*s) {
+        v = (v << 4) | hex_val(*s);
+        s++;
+    }
+    return v;
+}
 
 struct pattern {
     const char* sig;
@@ -18,7 +35,7 @@ static bool find(const char* sig, uintptr_t base, size_t size, uintptr_t& out) {
             sig += 2;
         } else {
             char hex[3] = { sig[0], sig[1], 0 };
-            bytes[len] = (uint8_t)strtoul(hex, nullptr, 16);
+            bytes[len] = (uint8_t)hex_to_ul(hex);
             mask[len] = 1;
             sig += 2;
         }
@@ -65,9 +82,8 @@ static DWORD WINAPI thread(LPVOID) {
     return 0;
 }
 
-BOOL APIENTRY DllMain(HMODULE hMod, DWORD reason, LPVOID) {
+extern "C" BOOL APIENTRY DllMain(HMODULE hMod, DWORD reason, LPVOID) {
     if (reason == DLL_PROCESS_ATTACH) {
-        DisableThreadLibraryCalls(hMod);
         HANDLE t = CreateThread(nullptr, 0, thread, hMod, 0, nullptr);
         if (t) CloseHandle(t);
     }
